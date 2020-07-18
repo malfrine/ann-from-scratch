@@ -23,49 +23,12 @@ public class ArtificialNeuralNetwork {
         return lossFunction;
     }
 
-    public RealVector predict(RealVector X) {
-        RealVector nextLayerInput = X;
-        for (Layer layer : layers) {
-            // System.out.println(nextLayerInput);
-            nextLayerInput = layer.getOutput(nextLayerInput);
-        }
-        return nextLayerInput;
-    }
-
     public RealMatrix predict(RealMatrix X) {
         RealMatrix nextLayerInput = X;
         for (Layer layer : layers) {
             nextLayerInput = layer.getOutput(nextLayerInput);
         }
         return nextLayerInput;
-    }
-
-    public void learnOnSingle(RealVector X, RealVector actual) {
-        // perform feed-forward and record output at each layer
-        List<RealVector> layerInputs = new ArrayList<>();
-        RealVector layerInput = X;
-        for (Layer layer : layers) {
-            layerInputs.add(layerInput);
-            layerInput = layer.getOutput(layerInput);
-        }
-
-        int numLayers = layers.size();
-
-        RealVector lossChangeDueToOutput = lossFunction.evaluateGradient(actual, layerInput);
-        for (int i = numLayers - 1; i >= 0; i--) {
-            Layer layer = layers.get(i);
-            layerInput = layerInputs.get(i);
-            RealVector activationFunctionInput = layer.dotProductOnWeights(layerInput);
-            RealVector outputAndActivationDerivatives = layer.activationFunction
-                    .evaluateGradient(activationFunctionInput)
-                    .ebeMultiply(lossChangeDueToOutput);
-            RealMatrix lossChangeDueToLayerWeights = layerInput.outerProduct(outputAndActivationDerivatives);
-            lossChangeDueToOutput =
-                    layer.outputWeights.operate(outputAndActivationDerivatives.ebeMultiply(lossChangeDueToOutput));
-            RealMatrix newWeights = layer.outputWeights.subtract(lossChangeDueToLayerWeights.scalarMultiply(RATE));
-            layer.outputWeights = newWeights;
-        }
-
     }
 
     public void learn(RealMatrix X, RealMatrix actual) {
@@ -101,16 +64,8 @@ public class ArtificialNeuralNetwork {
             this.activationFunction = activationFunction;
         }
 
-        private RealVector dotProductOnWeights(RealVector input) {
-            // System.out.println(outputWeights.transpose().operate(input));
-            return outputWeights.transpose().operate(input);
-        }
         private RealMatrix dotProductOnWeights(RealMatrix input) {
             return outputWeights.transpose().multiply(input);
-        }
-
-        private RealVector getOutput(RealVector input) {
-            return activationFunction.evaluate(dotProductOnWeights(input));
         }
 
         private RealMatrix getOutput(RealMatrix input) {
@@ -152,12 +107,7 @@ public class ArtificialNeuralNetwork {
             for (int i = 0; i < numNeurons.size() - 1; i++) {
                 int curLayerSize = numNeurons.get(i);
                 int nextLayerSize = numNeurons.get(i+1);
-                System.out.println("Layer " + i + " size: " + curLayerSize);
-
                 RealMatrix startingWeights = Utilities.generateRandomRealMatrix(curLayerSize, nextLayerSize);
-                System.out.println("Layer " + i + " weights row size: " + startingWeights.getRowDimension());;
-                System.out.println("Layer " + i + " weights column size: " + startingWeights.getColumnDimension());;
-
                 layers.add(new Layer(startingWeights, activationFunctions.get(i)));
             }
             return layers;

@@ -11,74 +11,78 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class DigitClassificationNeuralNetwork {
 
-    private DataCollector dataCollector;
-    private Random rng = new Random();
+    private static final Logger logger = Logger.getLogger(DigitClassificationNeuralNetwork.class.getName());
+    private static final Random rng = new Random();
 
-    public DigitClassificationNeuralNetwork(DataCollector dataCollector) {
+    private final DataCollector dataCollector;
+    private final int numIterations;
+    private final double testTrainSplit;
+
+    public DigitClassificationNeuralNetwork(
+            DataCollector dataCollector,
+            int numIterations,
+            double testTrainSplit
+    ) {
+        if (numIterations < 0) {
+            throw new IllegalArgumentException("number of iterations must be greater than or equal to 0");
+        }
+        if (testTrainSplit > 1) {
+            throw new IllegalArgumentException("test train split factor must be less than 1.");
+        }
         this.dataCollector = dataCollector;
+        this.numIterations = numIterations;
+        this.testTrainSplit = testTrainSplit;
     }
 
     public void run() throws IOException, IllegalAccessException {
         RealMatrix inputs = makeInputs();
         RealMatrix outputs = makeOutputs();
 
-        System.out.println("input row size: " + inputs.getRowDimension());
-        System.out.println("input columns size: " + inputs.getColumnDimension());
-        System.out.println("output rows size: " + outputs.getRowDimension());
-        System.out.println("output columns size: " + outputs.getColumnDimension());
+        logger.info("input row size: " + inputs.getRowDimension());
+        logger.info("input columns size: " + inputs.getColumnDimension());
+        logger.info("output rows size: " + outputs.getRowDimension());
+        logger.info("output columns size: " + outputs.getColumnDimension());
 
-        ArtificialNeuralNetwork.Builder annBuilder = ArtificialNeuralNetwork.Builder.newInstance(new NormalLossFunction());
-        annBuilder.addLayer(inputs.getRowDimension(), new SigmoidFunction());
-        annBuilder.addLayer(30, new SigmoidFunction());
-        annBuilder.addFinalLayer(outputs.getRowDimension());
-        ArtificialNeuralNetwork ann = annBuilder.build();
+        ArtificialNeuralNetwork ann = buildAnn(inputs, outputs);
+        runGradientDescent(ann, inputs, outputs);
 
-        RealMatrix firstPrediction = ann.predict(inputs);
-        System.out.println(inputs.transpose());
-        System.out.println(outputs.transpose());
-        System.out.println(firstPrediction.transpose());
+        RealMatrix finalPrediction = ann.predict(inputs);
+        logEachPrediction(finalPrediction);
+        logger.info("Final accuracy: " + calculateAccuracy(finalPrediction) * 100 + "%");
+    }
 
-        int numIterations = 5000;
+    private void runGradientDescent(ArtificialNeuralNetwork ann, RealMatrix inputs, RealMatrix outputs) {
         for (int i = 0; i < numIterations; i++) {
             ann.learn(inputs, outputs);
             RealMatrix prediction = ann.predict(inputs);
             int randomIndex = rng.nextInt(inputs.getColumnDimension());
-            ann.learnOnSingle(inputs.getColumnVector(randomIndex), outputs.getColumnVector(randomIndex));
+            ann.learn(inputs.getColumnMatrix(randomIndex), outputs.getColumnMatrix(randomIndex));
             if (i % (numIterations / 100) == 0) {
                 double accuracy = calculateAccuracy(prediction);
-                System.out.println(
+                logger.info(
                         "Iterations: " + i
-                        + "; accuracy: " + accuracy * 100 + "%"
-                        + "; loss: " + ann.getLossFunction().evaluateLoss(outputs, prediction
+                                + "; accuracy: " + accuracy * 100 + "%"
+                                + "; loss: " + ann.getLossFunction().evaluateLoss(outputs, prediction
                         )
                 );
             }
-
         }
-        RealMatrix finalPrediction = ann.predict(inputs);
-
-        int numImages = dataCollector.getNumbers().size();
-        int numAccuratePredictions = 0;
-        for (int i = 0; i < numImages; i++) {
-            int actualNumber = dataCollector.getNumbers().get(i);
-            int predictedNumber = finalPrediction.getColumnVector(i).getMaxIndex();
-            double confidence = finalPrediction.getColumnVector(i).getMaxValue();
-            if (actualNumber == predictedNumber) {
-                numAccuratePredictions++;
-            }
-            System.out.println("Actual: " + actualNumber + "; Predicted: "
-                    + predictedNumber + " with confidence: " + confidence + "%");
-        }
-        double accuracy = (double) numAccuratePredictions / numImages;
-        System.out.println("Model accuracy: " + accuracy * 100 + "%");
-
-
     }
+
+    private ArtificialNeuralNetwork buildAnn(RealMatrix inputs, RealMatrix outputs) {
+        ArtificialNeuralNetwork.Builder annBuilder = ArtificialNeuralNetwork.Builder.newInstance(new NormalLossFunction());
+        annBuilder.addLayer(inputs.getRowDimension(), new SigmoidFunction());
+        annBuilder.addLayer(30, new SigmoidFunction());
+        annBuilder.addFinalLayer(outputs.getRowDimension());
+        return annBuilder.build();
+    }
+
 
     private RealMatrix makeInputs() {
         int numPixels = dataCollector.getImages().get(0).getNumRows()
@@ -119,19 +123,18 @@ public class DigitClassificationNeuralNetwork {
 
     private double calculateAccuracy(RealMatrix prediction) {
         int numImages = dataCollector.getNumbers().size();
-        int numAccuratePredictions = 0;
-        for (int i = 0; i < numImages; i++) {
-            int actualNumber = dataCollector.getNumbers().get(i);
-            int predictedNumber = prediction.getColumnVector(i).getMaxIndex();
-            // double confidence = prediction.getColumnVector(i).getMaxValue();
-            if (actualNumber == predictedNumber) {
-                numAccuratePredictions++;
-            }
-//            System.out.println("Actual: " + actualNumber + "; Predicted: "
-//                    + predictedNumber + " with confidence: " + confidence + "%");
+        return IntStream.range(0, numImages).mapToDouble(i ->
+                dataCollector.getNumbers().get(i) == prediction.getColumnVector(i).getMaxIndex() ? 1 : 0
+        ).sum()  / numImages;
+    }
+
+    private void logEachPrediction(RealMatrix prediction) {
+        for (int i = 0; i < dataCollector.getImages().size(); i++) {
+            logger.info(
+                    "Actual: " + dataCollector.getNumbers().get(i)
+                            + "; Predicted: " + prediction.getColumnVector(i).getMaxIndex()
+                            + " with confidence: " + prediction.getColumnVector(i).getMaxValue() * 100 + "%");
         }
-        return (double) numAccuratePredictions / numImages;
-        // System.out.println("Model accuracy: " + accuracy * 100 + "%");
     }
 
 }

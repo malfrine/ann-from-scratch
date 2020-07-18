@@ -3,15 +3,7 @@ package ann;
 import org.apache.commons.math3.linear.*;
 
 public class SigmoidFunction implements ActivationFunction {
-    @Override
-    public RealVector evaluate(RealVector x) {
-        return x.map(this::evaluate);
-    }
 
-    @Override
-    public RealVector evaluateGradient(RealVector x) {
-        return x.map(this::evaluateGradient);
-    }
 
     @Override
     public RealMatrix evaluate(RealMatrix x) {

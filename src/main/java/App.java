@@ -14,13 +14,13 @@ public class App {
 
     public static void main(String[] args) throws IOException, IllegalAccessException {
         DataReader dataReader = new DataReader();
-        DataCollector dataCollector = dataReader.readData(300);
+        DataCollector dataCollector = dataReader.readData(50);
 
         logger.info(dataCollector.getImages().get(0).toString());
         logger.info(dataCollector.getNumbers().get(0).toString());
 
         DigitClassificationNeuralNetwork digitClassificationNeuralNetwork =
-                new DigitClassificationNeuralNetwork(dataCollector);
+                new DigitClassificationNeuralNetwork(dataCollector, 5000, 0.1);
 
         digitClassificationNeuralNetwork.run();
 
