@@ -1,6 +1,5 @@
 
 import dao.DataReader;
-import ann.ArtificialNeuralNetwork;
 import model.DataCollector;
 import model.DigitClassificationNeuralNetwork;
 
