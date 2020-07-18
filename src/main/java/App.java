@@ -11,19 +11,15 @@ import java.util.logging.Logger;
 public class App {
 
     private static final Logger logger = Logger.getLogger(App.class.getName());
+    private static final int NUM_IMAGES = 500;
+    private static final int NUM_ITERATIONS = 5000;
 
     public static void main(String[] args) throws IOException, IllegalAccessException {
         DataReader dataReader = new DataReader();
-        DataCollector dataCollector = dataReader.readData(50);
-
-        logger.info(dataCollector.getImages().get(0).toString());
-        logger.info(dataCollector.getNumbers().get(0).toString());
-
+        DataCollector dataCollector = dataReader.readData(NUM_IMAGES);
         DigitClassificationNeuralNetwork digitClassificationNeuralNetwork =
-                new DigitClassificationNeuralNetwork(dataCollector, 5000, 0.1);
-
+                new DigitClassificationNeuralNetwork(dataCollector, NUM_ITERATIONS);
         digitClassificationNeuralNetwork.run();
-
     }
 
 }

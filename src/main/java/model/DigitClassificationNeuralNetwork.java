@@ -22,22 +22,16 @@ public class DigitClassificationNeuralNetwork {
 
     private final DataCollector dataCollector;
     private final int numIterations;
-    private final double testTrainSplit;
 
     public DigitClassificationNeuralNetwork(
             DataCollector dataCollector,
-            int numIterations,
-            double testTrainSplit
+            int numIterations
     ) {
         if (numIterations < 0) {
             throw new IllegalArgumentException("number of iterations must be greater than or equal to 0");
         }
-        if (testTrainSplit > 1) {
-            throw new IllegalArgumentException("test train split factor must be less than 1.");
-        }
         this.dataCollector = dataCollector;
         this.numIterations = numIterations;
-        this.testTrainSplit = testTrainSplit;
     }
 
     public void run() throws IOException, IllegalAccessException {
